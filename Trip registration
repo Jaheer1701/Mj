@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koiken Half Trip - Registration</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Koiken Half Trip Netherlands</h1>
+        <form id="registrationForm">
+            <label for="name">First Name:</label>
+            <input type="text" id="name" required>
+
+            <label for="surname">Surname:</label>
+            <input type="text" id="surname" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" required>
+
+            <label for="phone">Phone Number:</label>
+            <input type="tel" id="phone" required>
+
+            <label>Gender:</label>
+            <select id="gender">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+
+            <label>Orbit Membership:</label>
+            <select id="membership">
+                <option value="Orbit Member">Orbit Member (€25)</option>
+                <option value="Non Orbit Member">Non Orbit Member (€35)</option>
+            </select>
+
+            <div id="paymentSection">
+                <p>Scan the QR code or click the link to pay:</p>
+                <img id="paymentQR" src="" alt="QR Code">
+                <p><a id="paymentLink" href="#" target="_blank">Pay Here</a></p>
+            </div>
+
+            <button type="submit">Register</button>
+        </form>
+
+        <p id="statusMessage"></p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+body {
+    background: url('keukenhof.jpg') no-repeat center center fixed;
+    background-size: cover;
+    font-family: Arial, sans-serif;
+    color: white;
+    text-align: center;
+}
+
+.container {
+    background: rgba(0, 0, 0, 0.7);
+    width: 50%;
+    margin: auto;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 50px;
+}
+
+input, select, button {
+    display: block;
+    width: 80%;
+    margin: 10px auto;
+    padding: 10px;
+}
+
+button {
+    background-color: #ff6600;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #ff4500;
+}
+const form = document.getElementById('registrationForm');
+const membershipSelect = document.getElementById('membership');
+const paymentQR = document.getElementById('paymentQR');
+const paymentLink = document.getElementById('paymentLink');
+
+const qr25 = 'qr25.png';  // Replace with correct file name
+const qr35 = 'qr35.png';  // Replace with correct file name
+
+const link25 = 'https://www.ing.nl/payreq/m/?trxid=gVLoMRAcyasF1NuCBAIehtFG9lNmBaqE';
+const link35 = 'https://www.ing.nl/payreq/m/?trxid=yZI8XYc3nXXeDtczLawLBDJOjGEqqGqV';
+
+let registrations = 0;
+
+membershipSelect.addEventListener('change', () => {
+    if (membershipSelect.value === 'Orbit Member') {
+        paymentQR.src = qr25;
+        paymentLink.href = link25;
+    } else {
+        paymentQR.src = qr35;
+        paymentLink.href = link35;
+    }
+});
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (registrations >= 30) {
+        document.getElementById('statusMessage').textContent = "Registration closed: 30 spots filled.";
+        return;
+    }
+
+    const data = {
+        name: document.getElementById('name').value,
+        surname: document.getElementById('surname').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        gender: document.getElementById('gender').value,
+        membership: membershipSelect.value
+    };
+
+    await saveToExcel(data);
+    sendEmail(data.email);
+
+    registrations++;
+    if (registrations >= 30) {
+        document.getElementById('statusMessage').textContent = "Registration closed: 30 spots filled.";
+    } else {
+        document.getElementById('statusMessage').textContent = "Registration successful!";
+    }
+
+    form.reset();
+});
+
+async function saveToExcel(data) {
+    const response = await fetch('save.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+function sendEmail(email) {
+    fetch('sendEmail.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+}
+<?php
+$data = json_decode(file_get_contents("php://input"), true);
+
+if ($data) {
+    $file = fopen("registrations.csv", "a");
+    fputcsv($file, $data);
+    fclose($file);
+    echo json_encode(["success" => true]);
+}
+?>
+<?php
+$data = json_decode(file_get_contents("php://input"), true);
+$to = "jaheeruddeenmogal04@gmail.com";
+$subject = "New Registration for Koiken Half Trip";
+$message = "A new user has registered with email: " . $data['email'];
+$headers = "From: noreply@yourwebsite.com";
+
+mail($to, $subject, $message, $headers);
+?>
